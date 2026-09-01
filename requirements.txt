@@ -1,0 +1,11 @@
+# 爬虫：渲染官方页面（正文 JS 异步加载，需真实浏览器）+ 解析 HTML
+playwright>=1.44
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# PDF 解析
+pymupdf>=1.24
+
+# Web 服务
+fastapi>=0.111
+uvicorn>=0.30

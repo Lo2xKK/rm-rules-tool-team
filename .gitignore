@@ -1,0 +1,9 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# 数据与产物（不提交官方 PDF 与数据库，避免版权与体积问题）
+data/
+*.log
