@@ -77,6 +77,19 @@ HTML = """<!DOCTYPE html>
   .search-box input:focus { outline: none; border-color: var(--accent); }
   .search-box button { font-size: 15px; padding: 12px 22px; border: none;
     border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; }
+  .ver-select { position: relative; }
+  .ver-btn { font-size: 14px; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--card); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .ver-panel { position: absolute; top: calc(100% + 6px); left: 0; background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; z-index: 20;
+    min-width: 150px; max-height: 300px; overflow-y: auto; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+  .ver-panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; cursor: pointer; white-space: nowrap; }
+  .ver-panel input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: 0 0 12px; width: 12px; height: 12px;
+    border: 1.5px solid var(--muted); border-radius: 50%; cursor: pointer; position: relative; margin: 0; padding: 0; }
+  .ver-panel input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+  .ver-panel input[type="checkbox"]:checked::after { content: ''; position: absolute; left: 4px; top: 4px; width: 4px; height: 4px; background: #fff; border-radius: 50%; }
+  .ver-actions { display: flex; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .ver-actions span { font-size: 12px; color: var(--accent); cursor: pointer; }
   .stats { color: var(--muted); font-size: 13px; margin: 8px 0 16px; }
   .card { background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
@@ -89,19 +102,53 @@ HTML = """<!DOCTYPE html>
   mark { background: var(--mark); border-radius: 3px; padding: 0 2px; color: inherit; }
   .empty { color: var(--muted); text-align: center; padding: 60px 0; font-size: 14px; }
 
+  .view-switch { display: flex; gap: 4px; margin-left: auto; }
+  .view-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+    cursor: pointer; color: var(--text); padding: 0; flex-shrink: 0; }
+  .view-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .view-btn svg { width: 18px; height: 18px; display: block; fill: none; }
+  .view-btn svg rect, .view-btn svg line { stroke: currentColor; }
+
+  .group { background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 16px; margin-bottom: 12px; }
+  .group-head { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 600; padding: 4px 0; }
+  .group-head .cnt { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .group-item { padding: 8px 0 8px 4px; border-top: 1px solid var(--border); }
+  .group-item:first-of-type { border-top: none; }
+  .group-item .gno { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--accent); font-weight: 600; }
+  .group-item .gtitle { font-size: 14px; font-weight: 500; }
+  .group-item .gmeta { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .group-item .gsnippet { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 2px; }
+
+  .search-table { width: 100%; border-collapse: collapse; background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .search-table th { text-align: left; padding: 9px 14px; background: var(--accent-bg);
+    color: var(--accent); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .search-table td { padding: 8px 14px; border-top: 1px solid var(--border); vertical-align: top; }
+  .search-table td.tno { font-family: ui-monospace, Consolas, monospace; color: var(--accent); white-space: nowrap; }
+  .search-table td.tmeta { color: var(--muted); white-space: nowrap; font-size: 12px; }
+
+  .cmp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .cmp-cols .col-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .cmp-cols .col-label.old { color: var(--muted); }
+  .cmp-cols .col-label.new { color: var(--accent); }
+  .cmp-cols .col-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    font-size: 13px; line-height: 1.8; background: var(--card); color: #3a3a37; min-height: 40px; }
+
   .cmp-bar { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; flex-wrap: wrap; }
   .cmp-bar label { font-size: 14px; color: var(--muted); }
   .cmp-bar select { font-size: 14px; padding: 8px 12px; border: 1px solid var(--border);
     border-radius: 8px; background: var(--card); color: var(--text); }
-  .cmp-bar button { font-size: 14px; padding: 9px 22px; border: none; border-radius: 8px;
+  .cmp-bar > button { font-size: 14px; padding: 9px 22px; border: none; border-radius: 8px;
     background: var(--accent); color: #fff; cursor: pointer; }
-  .cmp-summary { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .cmp-stat { flex: 1; min-width: 90px; text-align: center; padding: 12px 8px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
-  .cmp-stat .num { font-size: 22px; font-weight: 700; }
-  .cmp-stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .stat-add .num { color: var(--add); } .stat-del .num { color: var(--del); }
-  .stat-mod .num { color: var(--warn); }
+  .cmp-summary { margin-bottom: 14px; }
+  .cmp-inline { font-size: 13px; color: var(--muted); }
+  .cmp-inline .c-add { color: var(--add); font-weight: 600; }
+  .cmp-inline .c-mod { color: var(--warn); font-weight: 600; }
+  .cmp-inline .c-del { color: var(--del); font-weight: 600; }
+  .cmp-inline .c-unch { color: var(--muted); }
   .cmp-item { background: var(--card); border: 1px solid var(--border);
     border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
   .cmp-item-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
@@ -138,11 +185,22 @@ HTML = """<!DOCTYPE html>
 
   <div id="searchView">
     <div class="search-box">
-      <select id="searchDoc" class="doc-select" onchange="doSearch()"></select>
+      <select id="searchDoc" class="doc-select" onchange="onDocChange()"></select>
+      <div class="ver-select">
+        <button class="ver-btn" id="verBtn" onclick="toggleVerPanel()">版本</button>
+        <div class="ver-panel hidden" id="verPanel"></div>
+      </div>
       <input id="q" placeholder="输入关键词，如：飞镖 发射 限制（空格分隔多词）" autofocus>
       <button onclick="doSearch()">搜索</button>
     </div>
-    <div class="stats" id="stats"></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin: 8px 0 16px;">
+      <div class="stats" id="stats" style="margin:0;"></div>
+      <div class="view-switch" id="searchViewSwitch">
+        <button class="view-btn" data-view="card" title="卡片视图" onclick="switchSearchView('card')"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="14" height="12" rx="1.5"/><line x1="4.5" y1="7" x2="13.5" y2="7"/><line x1="4.5" y1="10.5" x2="10" y2="10.5"/></svg></button>
+        <button class="view-btn" data-view="group" title="分组视图" onclick="switchSearchView('group')"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2.5" width="14" height="3" rx="0.8"/><rect x="5" y="7.5" width="11" height="3" rx="0.8"/><rect x="5" y="12.5" width="11" height="3" rx="0.8"/></svg></button>
+        <button class="view-btn" data-view="table" title="表格视图" onclick="switchSearchView('table')"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2.5" width="14" height="13" rx="1.2"/><line x1="2" y1="7" x2="16" y2="7"/><line x1="2" y1="11.5" x2="16" y2="11.5"/><line x1="7" y1="2.5" x2="7" y2="15.5"/></svg></button>
+      </div>
+    </div>
     <div id="results"><div class="empty">输入关键词开始搜索</div></div>
   </div>
 
@@ -155,6 +213,10 @@ HTML = """<!DOCTYPE html>
       <label>到</label>
       <select id="cmpTo"></select>
       <button onclick="doCompare()">对比</button>
+      <div class="view-switch" id="compareViewSwitch">
+        <button class="view-btn" data-view="card" title="卡片视图" onclick="switchCompareView('card')"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="14" height="12" rx="1.5"/><line x1="4.5" y1="7" x2="13.5" y2="7"/><line x1="4.5" y1="10.5" x2="13.5" y2="10.5"/></svg></button>
+        <button class="view-btn" data-view="columns" title="双栏对照" onclick="switchCompareView('columns')"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="1.5" y="3" width="6.5" height="12" rx="1"/><rect x="10" y="3" width="6.5" height="12" rx="1"/></svg></button>
+      </div>
     </div>
     <div id="cmpSummary"></div>
     <div id="rnBox"></div>
@@ -162,6 +224,148 @@ HTML = """<!DOCTYPE html>
   </div>
 </div>
 <script>
+let searchView = localStorage.getItem('searchView') || 'card';
+let compareView = localStorage.getItem('compareView') || 'columns';
+let lastSearchData = null;
+let lastCompareData = null;
+
+function updateSearchViewButtons() {
+  document.querySelectorAll('#searchViewSwitch .view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === searchView);
+  });
+}
+function updateCompareViewButtons() {
+  document.querySelectorAll('#compareViewSwitch .view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === compareView);
+  });
+}
+function switchSearchView(view) {
+  searchView = view;
+  localStorage.setItem('searchView', view);
+  updateSearchViewButtons();
+  if (lastSearchData) renderSearchResults();
+}
+function switchCompareView(view) {
+  compareView = view;
+  localStorage.setItem('compareView', view);
+  updateCompareViewButtons();
+  if (lastCompareData) renderCompare(lastCompareData);
+}
+
+function renderSearchResults() {
+  const box = document.getElementById('results');
+  const data = lastSearchData;
+  if (!data || !data.results.length) {
+    box.innerHTML = '<div class="empty">没有匹配的条款，换个关键词试试</div>';
+    return;
+  }
+  if (searchView === 'group') box.innerHTML = renderGroupView(data);
+  else if (searchView === 'table') box.innerHTML = renderTableView(data);
+  else box.innerHTML = renderCardView(data);
+}
+
+function renderCardView(data) {
+  return data.results.map(r =>
+    '<div class="card">' +
+      '<div class="card-head">' +
+        '<span class="no">' + r.clause_no + '</span>' +
+        '<span class="title">' + r.title + '</span>' +
+        '<span class="meta">' + r.doc_type + ' · ' + r.version + ' · 第 ' + r.page + ' 页</span>' +
+      '</div>' +
+      '<p class="snippet">' + r.snippet + '</p>' +
+    '</div>'
+  ).join('');
+}
+
+function renderGroupView(data) {
+  const sections = data.sections || {};
+  const groups = {};
+  for (const r of data.results) {
+    const top = (r.clause_no || '').split('.')[0];
+    (groups[top] = groups[top] || []).push(r);
+  }
+  const keys = Object.keys(groups).sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0));
+  let html = '';
+  for (const k of keys) {
+    const t = sections[k];
+    const head = t ? (k + ' ' + t) : ('第 ' + k + ' 章');
+    html += '<div class="group"><div class="group-head"><span>' + head + '</span><span class="cnt">' + groups[k].length + ' 条命中</span></div>';
+    for (const r of groups[k]) {
+      html += '<div class="group-item"><span class="gno">' + r.clause_no + '</span> <span class="gtitle">' + r.title + '</span>' +
+        '<span class="gmeta">' + r.doc_type + ' · ' + r.version + '</span>' +
+        '<div class="gsnippet">' + r.snippet + '</div></div>';
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderTableView(data) {
+  let html = '<table class="search-table"><thead><tr><th>条款</th><th>标题</th><th>内容</th><th>来源</th></tr></thead><tbody>';
+  for (const r of data.results) {
+    html += '<tr><td class="tno">' + r.clause_no + '</td><td>' + r.title + '</td><td>' + r.snippet + '</td><td class="tmeta">' + r.doc_type + ' · ' + r.version + '</td></tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+let selectedVersions = null;
+
+function updateVerBtn() {
+  const btn = document.getElementById('verBtn');
+  btn.textContent = (!selectedVersions || selectedVersions.size === 0) ? '版本' : ('版本 ' + selectedVersions.size + ' 个');
+}
+
+async function onDocChange() {
+  selectedVersions = null;
+  updateVerBtn();
+  await loadVerOptions();
+  doSearch();
+}
+
+async function loadVerOptions() {
+  const doc = document.getElementById('searchDoc').value;
+  const panel = document.getElementById('verPanel');
+  if (!doc) {
+    panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0;">请先选文档类型</div>';
+    window.verList = [];
+    return;
+  }
+  const p = doc.split('|');
+  const resp = await fetch('/api/versions?event=' + encodeURIComponent(p[0]) + '&doc_type=' + encodeURIComponent(p[1]));
+  const data = await resp.json();
+  window.verList = data.versions;
+  renderVerPanel();
+}
+
+function renderVerPanel() {
+  const panel = document.getElementById('verPanel');
+  const sel = selectedVersions || new Set(window.verList);
+  let html = window.verList.map(v =>
+    '<label><input type="checkbox" value="' + v + '" ' + (sel.has(v) ? 'checked' : '') + ' onchange="onVerChange()"> ' + v + '</label>'
+  ).join('');
+  html += '<div class="ver-actions"><span onclick="verAll()">全选</span><span onclick="verNone()">清空</span></div>';
+  panel.innerHTML = html;
+}
+
+function onVerChange() {
+  const checked = Array.from(document.querySelectorAll('#verPanel input:checked')).map(b => b.value);
+  selectedVersions = (checked.length === window.verList.length) ? null : new Set(checked);
+  updateVerBtn();
+}
+
+function verAll() { selectedVersions = null; renderVerPanel(); updateVerBtn(); }
+function verNone() { selectedVersions = new Set(); renderVerPanel(); updateVerBtn(); }
+function toggleVerPanel() { document.getElementById('verPanel').classList.toggle('hidden'); }
+
+document.addEventListener('click', function(e) {
+  const wrap = document.querySelector('.ver-select');
+  const panel = document.getElementById('verPanel');
+  if (wrap && panel && !wrap.contains(e.target)) {
+    panel.classList.add('hidden');
+  }
+});
+
 async function loadDoctypes() {
   const resp = await fetch('/api/doctypes');
   const data = await resp.json();
@@ -187,31 +391,21 @@ function switchTab(tab) {
 async function doSearch() {
   const q = document.getElementById('q').value.trim();
   const stats = document.getElementById('stats');
-  const box = document.getElementById('results');
-  if (!q) { box.innerHTML = '<div class="empty">输入关键词开始搜索</div>'; stats.textContent=''; return; }
+  if (!q) { document.getElementById('results').innerHTML = '<div class="empty">输入关键词开始搜索</div>'; stats.textContent=''; lastSearchData = null; return; }
   const doc = document.getElementById('searchDoc').value;
   let url = '/api/search?q=' + encodeURIComponent(q);
   if (doc) {
     const p = doc.split('|');
     url += '&event=' + encodeURIComponent(p[0]) + '&doc_type=' + encodeURIComponent(p[1]);
   }
+  if (selectedVersions && selectedVersions.size > 0) {
+    url += '&versions=' + encodeURIComponent(Array.from(selectedVersions).join(','));
+  }
   const resp = await fetch(url);
   const data = await resp.json();
+  lastSearchData = data;
   stats.textContent = '命中 ' + data.count + ' 条';
-  if (!data.results.length) {
-    box.innerHTML = '<div class="empty">没有匹配的条款，换个关键词试试</div>';
-    return;
-  }
-  box.innerHTML = data.results.map(r =>
-    '<div class="card">' +
-      '<div class="card-head">' +
-        '<span class="no">' + r.clause_no + '</span>' +
-        '<span class="title">' + r.title + '</span>' +
-        '<span class="meta">' + r.version + ' · 第 ' + r.page + ' 页</span>' +
-      '</div>' +
-      '<p class="snippet">' + r.snippet + '</p>' +
-    '</div>'
-  ).join('');
+  renderSearchResults();
 }
 
 function setCheckBtn(state, count) {
@@ -343,10 +537,8 @@ async function loadVersions() {
 async function doCompare() {
   const from = document.getElementById('cmpFrom').value;
   const to = document.getElementById('cmpTo').value;
-  const box = document.getElementById('cmpResults');
-  const sum = document.getElementById('cmpSummary');
   if (!from || !to) return;
-  box.innerHTML = '<div class="empty">正在对比 ' + from + ' → ' + to + ' …</div>';
+  document.getElementById('cmpResults').innerHTML = '<div class="empty">正在对比 ' + from + ' → ' + to + ' …</div>';
   document.getElementById('rnBox').innerHTML = '';
   const doc = document.getElementById('cmpDoc').value;
   const p = doc.split('|');
@@ -358,7 +550,8 @@ async function doCompare() {
   ]);
   const data = await cmpResp.json();
   const rnData = await rnResp.json();
-  renderCompare(data, sum, box);
+  lastCompareData = data;
+  renderCompare(data);
   renderReleaseNotes(rnData.notes, from, to);
 }
 
@@ -381,18 +574,27 @@ function renderReleaseNotes(notes, from, to) {
   box.innerHTML = html;
 }
 
-function renderCompare(data, sum, box) {
+function renderCompare(data) {
+  const sum = document.getElementById('cmpSummary');
+  const box = document.getElementById('cmpResults');
   const s = data.summary;
   sum.innerHTML =
-    '<div class="cmp-stat stat-add"><div class="num">' + s.added + '</div><div class="lbl">新增条款</div></div>' +
-    '<div class="cmp-stat stat-mod"><div class="num">' + s.modified + '</div><div class="lbl">修改条款</div></div>' +
-    '<div class="cmp-stat stat-del"><div class="num">' + s.removed + '</div><div class="lbl">删除条款</div></div>' +
-    '<div class="cmp-stat"><div class="num">' + s.unchanged + '</div><div class="lbl">未变条款</div></div>';
+    '<span class="cmp-inline">' +
+      '<span class="c-add">新增 ' + s.added + '</span> · ' +
+      '<span class="c-mod">修改 ' + s.modified + '</span> · ' +
+      '<span class="c-del">删除 ' + s.removed + '</span> · ' +
+      '<span class="c-unch">未变 ' + s.unchanged + '</span>' +
+    '</span>';
   if (!data.changes.length) {
     box.innerHTML = '<div class="empty">两个版本完全一致，无任何改动</div>';
     return;
   }
-  box.innerHTML = data.changes.map(c => {
+  if (compareView === 'columns') box.innerHTML = renderColumnsView(data);
+  else box.innerHTML = renderCardCompare(data);
+}
+
+function renderCardCompare(data) {
+  return data.changes.map(c => {
     const badge = { added: 'badge-add', removed: 'badge-del', modified: 'badge-mod' }[c.type];
     const label = { added: '新增', removed: '删除', modified: '修改' }[c.type];
     let body = '';
@@ -410,6 +612,29 @@ function renderCompare(data, sum, box) {
   }).join('');
 }
 
+function renderColumnsView(data) {
+  const from = data.from, to = data.to;
+  return data.changes.map(c => {
+    const badge = { added: 'badge-add', removed: 'badge-del', modified: 'badge-mod' }[c.type];
+    const label = { added: '新增', removed: '删除', modified: '修改' }[c.type];
+    let left = '', right = '';
+    if (c.type === 'modified') { left = c.old_html || ''; right = c.new_html || ''; }
+    else if (c.type === 'added') { right = escHtml(c.new); }
+    else { left = escHtml(c.old); }
+    return '<div class="cmp-item">' +
+      '<div class="cmp-item-head">' +
+        '<span class="no">' + c.clause_no + '</span>' +
+        '<span class="title">' + escHtml(c.title) + '</span>' +
+        '<span class="badge ' + badge + '">' + label + '</span>' +
+      '</div>' +
+      '<div class="cmp-cols">' +
+        '<div><div class="col-label old">' + from + '</div><div class="col-box">' + (left || '—') + '</div></div>' +
+        '<div><div class="col-label new">' + to + '</div><div class="col-box">' + (right || '—') + '</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
 function escHtml(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\n/g, '<br>');
 }
@@ -417,6 +642,8 @@ function escHtml(s) {
 document.getElementById('q').addEventListener('keydown', e => {
   if (e.key === 'Enter') doSearch();
 });
+updateSearchViewButtons();
+updateCompareViewButtons();
 loadDoctypes();
 autoCheck();
 </script>
@@ -429,9 +656,29 @@ def index():
     return HTML
 
 
+def _get_sections(event: str, doc_type: str, lang: str) -> dict:
+    """返回一级章节映射 {clause_no: title}，供搜索结果分组视图显示章节标题。"""
+    conn = sqlite3.connect(DB_PATH)
+    doc = conn.execute(
+        "SELECT id FROM documents WHERE event=? AND doc_type=? AND lang=? ORDER BY version DESC LIMIT 1",
+        (event, doc_type, lang),
+    ).fetchone()
+    if not doc:
+        conn.close()
+        return {}
+    rows = conn.execute(
+        "SELECT clause_no, title FROM clauses WHERE doc_id=? "
+        "AND clause_no NOT LIKE '%.%' AND clause_no GLOB '[0-9]*'",
+        (doc[0],),
+    ).fetchall()
+    conn.close()
+    return {r[0]: r[1] for r in rows}
+
+
 @app.get("/api/search")
-def api_search(q: str = "", event: str = None, doc_type: str = None, lang: str = "中文版"):
-    results = search(q, event=event, doc_type=doc_type, lang=lang)
+def api_search(q: str = "", event: str = None, doc_type: str = None, lang: str = "中文版", versions: str = None):
+    ver_list = [v for v in (versions or "").split(",") if v.strip()]
+    results = search(q, event=event, doc_type=doc_type, lang=lang, versions=ver_list or None)
     kws = [k for k in q.split() if k.strip()]
     out = []
     for r in results:
@@ -450,7 +697,9 @@ def api_search(q: str = "", event: str = None, doc_type: str = None, lang: str =
             "event": r["event"],
             "snippet": snippet,
         })
-    return {"query": q, "count": len(out), "results": out}
+    # 章节映射（分组视图用；未选具体文档时回退到规则手册）
+    sections = _get_sections(event or "RMUC", doc_type or "比赛规则手册", lang)
+    return {"query": q, "count": len(out), "results": out, "sections": sections}
 
 
 @app.get("/api/doctypes")

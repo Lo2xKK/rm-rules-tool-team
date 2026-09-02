@@ -38,6 +38,34 @@ def inline_diff(old: str, new: str) -> str:
     return "".join(out)
 
 
+def _esc(s):
+    return html.escape(s).replace("\n", "<br>")
+
+
+def old_diff_html(old: str, new: str) -> str:
+    """旧版视角：被删/被改的部分标红（供双栏视图左栏）。"""
+    sm = difflib.SequenceMatcher(None, old, new)
+    out = []
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == "equal":
+            out.append(_esc(old[i1:i2]))
+        elif op in ("delete", "replace"):
+            out.append("<del>" + _esc(old[i1:i2]) + "</del>")
+    return "".join(out)
+
+
+def new_diff_html(old: str, new: str) -> str:
+    """新版视角：新增/被改的部分标绿（供双栏视图右栏）。"""
+    sm = difflib.SequenceMatcher(None, old, new)
+    out = []
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == "equal":
+            out.append(_esc(new[j1:j2]))
+        elif op in ("insert", "replace"):
+            out.append("<ins>" + _esc(new[j1:j2]) + "</ins>")
+    return "".join(out)
+
+
 def get_versions(event: str, doc_type: str, lang: str = "中文版") -> list[str]:
     """某文档类型已入库的所有版本号（按语义版本升序）。"""
     conn = sqlite3.connect(DB_PATH)
@@ -100,6 +128,8 @@ def compare(event: str, doc_type: str, from_v: str, to_v: str, lang: str = "中�
                 "old": o["content"],
                 "new": n["content"],
                 "diff_html": inline_diff(o["content"], n["content"]),
+                "old_html": old_diff_html(o["content"], n["content"]),
+                "new_html": new_diff_html(o["content"], n["content"]),
             })
 
     return {

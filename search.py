@@ -4,7 +4,7 @@ import sqlite3
 DB_PATH = "data/rules.db"
 
 
-def search(query: str, limit: int = 100, event: str = None, doc_type: str = None, lang: str = "中文版") -> list[dict]:
+def search(query: str, limit: int = 100, event: str = None, doc_type: str = None, lang: str = "中文版", versions: list = None) -> list[dict]:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     keywords = [k.strip() for k in query.split() if k.strip()]
@@ -18,6 +18,10 @@ def search(query: str, limit: int = 100, event: str = None, doc_type: str = None
         conds.append("d.doc_type = ?"); params.append(doc_type)
     if lang:
         conds.append("d.lang = ?"); params.append(lang)
+    if versions:
+        placeholders = ",".join("?" * len(versions))
+        conds.append(f"d.version IN ({placeholders})")
+        params.extend(versions)
     where = " AND ".join(conds)
     sql = (
         "SELECT c.id, c.clause_no, c.title, c.page, c.content, "
