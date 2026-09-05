@@ -19,6 +19,14 @@
   </div>
   <div id="updatePanel" class="update-panel hidden"></div>
 
+  <div id="emptyGuide" class="empty-guide hidden">
+    <div class="eg-body">
+      <div class="eg-title">规则数据尚未初始化</div>
+      <div class="eg-desc" id="egDesc">首次使用需先下载官方规则数据（约 240MB，视网络需几分钟）。下载完成后即可搜索、对比、查看 PDF。</div>
+      <button class="eg-btn" id="egBtn" onclick="doFirstDownload()">一键下载规则数据</button>
+    </div>
+  </div>
+
   <div class="tabs">
     <button id="tabSearch" class="tab active" onclick="switchTab('search')">搜索</button>
     <button id="tabCompare" class="tab" onclick="switchTab('compare')">版本对比</button>

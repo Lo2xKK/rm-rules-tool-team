@@ -876,6 +876,7 @@ updateSearchViewButtons();
 updateCompareViewButtons();
 loadSeasons();
 autoCheck();
+checkEmptyStatus();
 
 // 根据 URL hash 恢复当前 tab
 (function initTabFromHash() {
@@ -888,3 +889,46 @@ window.addEventListener('hashchange', function() {
   const valid = ['search', 'compare', 'seasonCompare'];
   if (valid.includes(hash)) switchTab(hash);
 });
+
+// 空库首次使用引导：数据库无文档时显示「一键下载规则数据」
+async function checkEmptyStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    if (!data.documents) {
+      document.getElementById('emptyGuide').classList.remove('hidden');
+    }
+  } catch (e) { /* 忽略，保持正常界面 */ }
+}
+
+async function doFirstDownload() {
+  const desc = document.getElementById('egDesc');
+  const btn = document.getElementById('egBtn');
+  btn.disabled = true;
+  btn.textContent = '正在下载…请保持页面打开';
+  desc.textContent = '正在下载官方规则数据（约 240MB），视网络速度需几分钟。请勿关闭或刷新页面。';
+  try {
+    const resp = await fetch('/api/update', { method: 'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+      const ok = data.items.filter(i => i.status === 'ok').length;
+      const err = data.items.filter(i => i.status === 'error').length;
+      if (ok > 0) {
+        desc.textContent = '下载完成（' + ok + ' 个文档），正在刷新…';
+        location.reload();
+      } else {
+        desc.textContent = '下载失败（' + err + ' 个）。可能是网络问题，请稍后重试，或改用命令行 python download.py --rules-cn。';
+        btn.disabled = false;
+        btn.textContent = '重试下载';
+      }
+    } else {
+      desc.textContent = '下载失败：' + (data.message || '未知错误');
+      btn.disabled = false;
+      btn.textContent = '重试下载';
+    }
+  } catch (e) {
+    desc.textContent = '下载失败：网络异常，请稍后重试，或改用命令行 python download.py --rules-cn。';
+    btn.disabled = false;
+    btn.textContent = '重试下载';
+  }
+}

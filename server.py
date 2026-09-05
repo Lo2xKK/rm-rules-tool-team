@@ -14,7 +14,7 @@ import uvicorn
 from search import search, highlight
 from updater import check_update, download_and_ingest
 from compare import compare, get_versions, get_latest_version
-from parser import DB_PATH
+from parser import DB_PATH, init_db
 from release_notes import extract_release_notes
 from clean import plain, clean_text, was_cleaned, focus_snippet
 
@@ -22,6 +22,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = FastAPI(title="RM 规则检索")
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+# 确保数据库文件与表结构存在（全新部署时 data/ 目录可能不存在，避免各接口报 no such table）
+try:
+    init_db().close()
+except Exception:
+    pass
 
 
 # ---------- 访问控制（队内部署用，可关闭） ----------
@@ -252,6 +258,23 @@ def api_seasons(lang: str = "中文版"):
     ).fetchall()
     conn.close()
     return {"seasons": [r[0] for r in rows]}
+
+
+@app.get("/api/status")
+def api_status():
+    """返回数据库状态（文档数），前端据此判断是否需要显示首次建库引导。"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+    except sqlite3.Error:
+        return {"documents": 0}  # data/ 目录或数据库文件不可用（全新部署）
+    try:
+        try:
+            n = conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        except sqlite3.OperationalError:
+            n = 0  # 表未建
+    finally:
+        conn.close()
+    return {"documents": n}
 
 
 @app.get("/api/doctypes")

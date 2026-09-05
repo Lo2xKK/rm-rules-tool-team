@@ -289,3 +289,25 @@
     .pdf-box { width: 96vw; height: 88vh; }
     .pdf-duo { grid-template-columns: 1fr; }
   }
+
+/* 空库首次使用引导 */
+.empty-guide {
+  margin: 24px auto;
+  max-width: 560px;
+  padding: 40px 36px;
+  background: #fff;
+  border: 1px solid #e5e4e0;
+  border-radius: 12px;
+  text-align: center;
+}
+.empty-guide .eg-title { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 10px; }
+.empty-guide .eg-desc { font-size: 13px; color: #888; line-height: 1.7; margin-bottom: 22px; }
+.empty-guide .eg-btn {
+  padding: 11px 26px; font-size: 14px; color: #fff; background: #0f6e56;
+  border: none; border-radius: 8px; cursor: pointer;
+}
+.empty-guide .eg-btn:hover { background: #085041; }
+.empty-guide .eg-btn:disabled { background: #9aa39e; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .empty-guide { padding: 28px 20px; margin: 12px auto; }
+}
