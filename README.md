@@ -9,7 +9,7 @@
 - **全文搜索**：一次列出所有命中条款，关键词高亮 + 条款号 + 出处（赛季/版本/页码），支持卡片 / 分组 / 表格三种视图；可按赛季筛选 + 同文档多版本过滤。
 - **版本对比**（同赛季）：任意两个版本条款级 diff（新增/修改/删除/未变），改动处红绿高亮，支持卡片 / 双栏两种视图；同步展示官方修改日志（Release Notes）；结果区可输入关键词实时过滤。
 - **赛季对比**（跨赛季）：任意两个赛季最新规则条款级 diff，结果区可输入关键词实时过滤。
-- **PDF 原文查看**：点击任一搜索 / 对比结果卡片，用 PDF.js 内嵌查看原 PDF 原文（含图片、表格、封面等），跳页到该条款所在页。
+- **PDF 原文查看**：点击任一搜索 / 对比结果卡片，查看原 PDF 对应页（服务器按需渲染单页图片，秒开、不传整份 PDF），自动跳页到该条款所在页。
 - **检查更新**：打开页面自动检测；按钮变红（有更新）/ 变绿（已是最新）；点击一键增量下载新版本 PDF 并入库。
 - **赛季筛选**：当前支持 2024 / 2025 / 2026 三个赛季，数据来自官方资料站 + wiki。
 
@@ -113,14 +113,14 @@ rm-rules-tool/
 ├── download.py        # CLI 建库脚本（--season=YYYY 接历史赛季）
 ├── start.bat          # Windows 一键启动
 ├── requirements.txt   # 依赖清单
-├── static/pdfjs/      # PDF.js 查看器（离线版，含 worker）
+├── static/            # 前端静态资源（index.html / app.css / app.js）
 ├── tests/             # 端到端回归测试（Playwright）
-└── data/              # 下载的 PDF + SQLite（不提交到仓库，见 .gitignore）
+└── data/              # 下载的 PDF + SQLite + 渲染的页面图片缓存（不提交，见 .gitignore）
 ```
 
 ## 技术栈
 
-Python 3.11+ / FastAPI + Uvicorn / Playwright（渲染爬虫）/ BeautifulSoup + lxml（解析）/ PyMuPDF（PDF 解析）/ SQLite（存储）/ **PDF.js**（前端内嵌 PDF 阅读器，纯静态，Apache-2.0）。核心功能纯本地，不依赖任何大模型或外部 API。
+Python 3.11+ / FastAPI + Uvicorn / Playwright（渲染爬虫）/ BeautifulSoup + lxml（解析）/ PyMuPDF（PDF 解析 + 单页渲染成图）/ SQLite（存储）。核心功能纯本地，不依赖任何大模型或外部 API。
 
 ## 免责声明
 
