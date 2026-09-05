@@ -251,7 +251,7 @@
   .pane-label { font-size: 13px; font-weight: 600; color: #fff; }
   .pane-nav { display: flex; align-items: center; gap: 8px; }
   .pane-canvas { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 0; }
-  .pane-canvas canvas { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.3); max-width: 100%; }
+  .pane-canvas img { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.3); max-width: 100%; height: auto; }
 
   /* 中屏响应式：版本留在第一行（与文档同排），搜索框移到下方独占一行 */
   @media (max-width: 860px) {

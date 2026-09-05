@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import pymupdf
 import uvicorn
 
 from search import search, highlight
@@ -378,6 +379,53 @@ def api_pdf(doc_id: int):
         media_type="application/pdf",
         headers={"Cache-Control": "public, max-age=604800"},
     )
+
+
+@app.get("/api/pdf/{doc_id}/meta")
+def api_pdf_meta(doc_id: int):
+    """返回 PDF 页数，供前端图片查看器翻页。"""
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT pdf_path FROM documents WHERE id=?", (doc_id,)).fetchone()
+    conn.close()
+    if not row or not row[0] or not os.path.exists(row[0]):
+        raise HTTPException(404, "PDF 文件不存在")
+    try:
+        doc = pymupdf.open(row[0])
+        n = doc.page_count
+        doc.close()
+    except Exception:
+        raise HTTPException(500, "PDF 解析失败")
+    return {"num_pages": n}
+
+
+@app.get("/api/pdf/{doc_id}/page/{page}")
+def api_pdf_page(doc_id: int, page: int):
+    """渲染 PDF 单页为 JPEG 返回（磁盘缓存），替代传输整份 PDF，3M 带宽下也能秒开。"""
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute("SELECT pdf_path FROM documents WHERE id=?", (doc_id,)).fetchone()
+    conn.close()
+    if not row or not row[0] or not os.path.exists(row[0]):
+        raise HTTPException(404, "PDF 文件不存在")
+    pdf_path = row[0]
+    cache_dir = os.path.join(BASE_DIR, "data", "pages", str(doc_id))
+    cache_file = os.path.join(cache_dir, f"{page}.jpg")
+    if not os.path.exists(cache_file):
+        try:
+            doc = pymupdf.open(pdf_path)
+            if page < 1 or page > doc.page_count:
+                doc.close()
+                raise HTTPException(404, "页码越界")
+            pix = doc[page - 1].get_pixmap(dpi=150)
+            data = pix.tobytes("jpeg", jpg_quality=82)
+            doc.close()
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(500, "渲染失败")
+        os.makedirs(cache_dir, exist_ok=True)
+        with open(cache_file, "wb") as f:
+            f.write(data)
+    return FileResponse(cache_file, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
 
 
 def _get_lan_ip() -> str:

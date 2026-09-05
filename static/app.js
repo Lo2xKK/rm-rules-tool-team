@@ -753,20 +753,19 @@ async function fetchRaw(clauseId) {
   }
 }
 
-let pdfState = { L: { doc: null, cur: 1, token: 0 }, R: { doc: null, cur: 1, token: 0 } };
+let pdfState = { L: { docId: null, cur: 1, numPages: 0, token: 0 }, R: { docId: null, cur: 1, numPages: 0, token: 0 } };
 
 function openPdfPair(fromDoc, fromPage, toDoc, toPage, title, fromLabel, toLabel) {
   document.getElementById('pdfTitle').textContent = title || 'PDF 原文';
   document.getElementById('pdfModal').classList.remove('hidden');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
-  pdfState.L.doc = null; pdfState.L.cur = 1;
-  pdfState.R.doc = null; pdfState.R.cur = 1;
+  pdfState.L.docId = null; pdfState.L.cur = 1; pdfState.L.numPages = 0;
+  pdfState.R.docId = null; pdfState.R.cur = 1; pdfState.R.numPages = 0;
   document.getElementById('paneLabelL').textContent = fromLabel || '旧版';
   document.getElementById('paneLabelR').textContent = toLabel || '新版';
   document.getElementById('paneL').style.display = fromDoc ? '' : 'none';
   document.getElementById('paneR').style.display = toDoc ? '' : 'none';
-  document.getElementById('paneCanvasL').innerHTML = '<canvas id="pdfCanvasL"></canvas>';
-  document.getElementById('paneCanvasR').innerHTML = '<canvas id="pdfCanvasR"></canvas>';
+  document.getElementById('paneCanvasL').innerHTML = '<img id="pdfImgL" alt="PDF 页">';
+  document.getElementById('paneCanvasR').innerHTML = '<img id="pdfImgR" alt="PDF 页">';
   if (fromDoc) loadPdfSide('L', fromDoc, fromPage);
   else document.getElementById('pdfPageInfoL').textContent = '—';
   if (toDoc) loadPdfSide('R', toDoc, toPage);
@@ -777,23 +776,21 @@ function openPdfPair(fromDoc, fromPage, toDoc, toPage, title, fromLabel, toLabel
 
 function loadPdfSide(side, docId, page) {
   const token = ++pdfState[side].token;
+  const st = pdfState[side];
+  st.docId = docId;
   const info = document.getElementById('pdfPageInfo' + side);
   info.textContent = '加载中…';
-  const task = pdfjsLib.getDocument('/api/pdf/' + docId);
-  task.onProgress = function(evt) {
+  fetch('/api/pdf/' + docId + '/meta').then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(m) {
     if (pdfState[side].token !== token) return;
-    if (evt.total > 0) {
-      const pct = Math.min(99, Math.round(evt.loaded / evt.total * 100));
-      info.textContent = '加载中 ' + pct + '%';
-    }
-  };
-  task.promise.then(function(doc) {
-    if (pdfState[side].token !== token) return;
-    pdfState[side].doc = doc;
-    pdfState[side].cur = Math.min(Math.max(page || 1, 1), doc.numPages);
+    st.numPages = m.num_pages;
+    st.cur = Math.min(Math.max(page || 1, 1), m.num_pages);
     renderPdfPage(side);
   }).catch(function(e) {
     if (pdfState[side].token !== token) return;
+    st.docId = null;
     document.getElementById('paneCanvas' + side).innerHTML =
       '<div style="color:#fff;padding:24px;line-height:1.7;">该条款对应的 PDF 未能加载。<br>' +
       '常见原因：对应文档尚未下载。请点击右上角「检查更新」下载最新文档后重试。<br>' +
@@ -803,39 +800,30 @@ function loadPdfSide(side, docId, page) {
 
 function renderPdfPage(side) {
   const st = pdfState[side];
-  if (!st.doc) return;
-  const doc = st.doc;
-  const cur = st.cur;
-  doc.getPage(cur).then(function(page) {
-    if (pdfState[side].doc !== doc) return;
-    const canvas = document.getElementById('pdfCanvas' + side);
-    const viewport = page.getViewport({ scale: 1.3 });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext('2d');
-    page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
-      if (pdfState[side].doc !== doc) return;
-      document.getElementById('pdfPageInfo' + side).textContent = cur + ' / ' + doc.numPages;
-    });
-  });
+  if (!st.docId) return;
+  const img = document.getElementById('pdfImg' + side);
+  const info = document.getElementById('pdfPageInfo' + side);
+  info.textContent = st.cur + ' / ' + st.numPages;
+  img.onerror = function() { info.textContent = '加载失败'; };
+  img.src = '/api/pdf/' + st.docId + '/page/' + st.cur;
 }
 
-function pdfPrev(side) { const st = pdfState[side]; if (st.doc && st.cur > 1) { st.cur--; renderPdfPage(side); } }
-function pdfNext(side) { const st = pdfState[side]; if (st.doc && st.cur < st.doc.numPages) { st.cur++; renderPdfPage(side); } }
+function pdfPrev(side) { const st = pdfState[side]; if (st.docId && st.cur > 1) { st.cur--; renderPdfPage(side); } }
+function pdfNext(side) { const st = pdfState[side]; if (st.docId && st.cur < st.numPages) { st.cur++; renderPdfPage(side); } }
 function alignPdfPages(target) {
   const L = pdfState.L, R = pdfState.R;
-  if (!L.doc || !R.doc) return;
+  if (!L.docId || !R.docId) return;
   if (target === 'R') {
-    L.cur = Math.min(Math.max(R.cur, 1), L.doc.numPages);  // 旧版迁就新版
+    L.cur = Math.min(Math.max(R.cur, 1), L.numPages);  // 旧版迁就新版
     renderPdfPage('L');
   } else {
-    R.cur = Math.min(Math.max(L.cur, 1), R.doc.numPages);  // 新版迁就旧版
+    R.cur = Math.min(Math.max(L.cur, 1), R.numPages);  // 新版迁就旧版
     renderPdfPage('R');
   }
 }
 function closePdf() {
   document.getElementById('pdfModal').classList.add('hidden');
-  pdfState.L.doc = null; pdfState.R.doc = null;
+  pdfState.L.docId = null; pdfState.R.docId = null;
 }
 
 document.getElementById('results').addEventListener('click', function(e) {
