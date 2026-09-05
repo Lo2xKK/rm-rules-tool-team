@@ -9,7 +9,7 @@ import re
 import sqlite3
 import urllib.request
 
-from crawler import fetch_manifest, UA
+from crawler import fetch_manifest, invalidate_manifest_cache, UA
 from parser import DB_PATH, ingest_pdf, init_db
 
 PDF_DIR = "data/pdfs"
@@ -33,40 +33,42 @@ def parse_version(v: str) -> tuple:
     return tuple(int(x or 0) for x in m.groups())
 
 
-def local_versions(lang: str = "中文版") -> dict:
-    """本地已入库版本：{(event, doc_type, lang): 最大版本号字符串}。"""
+def local_versions(lang: str = "中文版", season: str = "2026") -> dict:
+    """本地已入库版本：{(season, event, doc_type, lang): 最大版本号字符串}。"""
     conn = sqlite3.connect(DB_PATH)
     try:
         rows = conn.execute(
-            "SELECT DISTINCT event, doc_type, version, lang FROM documents WHERE lang=?",
-            (lang,),
+            "SELECT DISTINCT season, event, doc_type, version, lang FROM documents WHERE lang=? AND season=?",
+            (lang, season),
         ).fetchall()
     finally:
         conn.close()
     best = {}
-    for event, doc_type, version, lang in rows:
-        key = (event, normalize_doc_type(doc_type), lang)
+    for season, event, doc_type, version, lang in rows:
+        key = (season, event, normalize_doc_type(doc_type), lang)
         if key not in best or parse_version(version) > parse_version(best[key]):
             best[key] = version
     return best
 
 
-def _official_best(manifest: dict, lang: str = "中文版") -> dict:
-    """官方清单里每个 (event, doc_type, lang) 的最新版本文档。"""
+def _official_best(manifest: dict, lang: str = "中文版", season: str = "2026") -> dict:
+    """官方清单里每个 (season, event, doc_type, lang) 的最新版本文档。"""
     best = {}
     for docs in manifest.values():
         for d in docs:
             if d["lang"] != lang:
                 continue
+            if d.get("season", "2026") != season:
+                continue
             dt = normalize_doc_type(d["doc_type"])
-            key = (d.get("event", "RMUC"), dt, d["lang"])
+            key = (d.get("season", "2026"), d.get("event", "RMUC"), dt, d["lang"])
             if key not in best or parse_version(d["version"]) > parse_version(best[key]["version"]):
                 best[key] = {**d, "doc_type": dt}
     return best
 
 
-def check_update(lang: str = "中文版"):
-    """抓官方清单并对比本地（默认只看中文版），返回 (report, manifest)。
+def check_update(lang: str = "中文版", season: str = "2026"):
+    """抓官方清单并对比本地（默认只看中文版 + 指定赛季），返回 (report, manifest)。
 
     report = {
         "current": [{doc, local_version}],   # 已最新
@@ -75,8 +77,8 @@ def check_update(lang: str = "中文版"):
     }
     """
     manifest = fetch_manifest()
-    official = _official_best(manifest, lang)
-    local = local_versions(lang)
+    official = _official_best(manifest, lang, season)
+    local = local_versions(lang, season)
     report = {"current": [], "update": [], "new": []}
     for key, d in official.items():
         if key in local:
@@ -108,11 +110,12 @@ def download_and_ingest(docs: list[dict]) -> list[dict]:
     for d in docs:
         doc_type = normalize_doc_type(d["doc_type"])
         event = d.get("event", "RMUC")
+        season = d.get("season", "2026")
         try:
             # 已入库则跳过下载，避免重复拉取 PDF
             existed = conn.execute(
-                "SELECT id FROM documents WHERE event=? AND doc_type=? AND version=? AND lang=?",
-                (event, doc_type, d["version"], d["lang"]),
+                "SELECT id FROM documents WHERE season=? AND event=? AND doc_type=? AND version=? AND lang=?",
+                (season, event, doc_type, d["version"], d["lang"]),
             ).fetchone()
             if existed:
                 results.append({
@@ -121,7 +124,7 @@ def download_and_ingest(docs: list[dict]) -> list[dict]:
                 })
                 continue
             path = download_pdf(d)
-            doc_id, n = ingest_pdf(path, doc_type, d["version"], d["lang"], conn, event=event)
+            doc_id, n = ingest_pdf(path, doc_type, d["version"], d["lang"], conn, event=event, season=season)
             results.append({
                 "filename": d["filename"], "doc_type": doc_type, "version": d["version"],
                 "doc_id": doc_id, "clauses": n, "status": "ok",
@@ -132,6 +135,7 @@ def download_and_ingest(docs: list[dict]) -> list[dict]:
                 "status": "error", "error": str(e),
             })
     conn.close()
+    invalidate_manifest_cache()  # 入库后清缓存，下次「检查更新」重新比对
     return results
 
 

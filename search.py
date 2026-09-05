@@ -4,7 +4,17 @@ import sqlite3
 DB_PATH = "data/rules.db"
 
 
-def search(query: str, limit: int = 100, event: str = None, doc_type: str = None, lang: str = "中文版", versions: list = None) -> list[dict]:
+def search(query: str, limit: int = 100, event: str = None, doc_type: str = None, lang: str = "中文版", versions: list = None, season: str = None) -> list[dict]:
+    """关键词检索条款（多关键词 AND），按相关性排序返回。
+
+    相关性打分规则（针对中文规则文本；不引入 FTS5，因 FTS5 默认分词器
+    会把连续汉字合并成单个 token、trigram 又要求查询 >=3 字，对 2 字词
+    如「飞镖/惩罚」均无法召回）：
+    - 关键词在正文出现次数（频率）
+    - 关键词首次出现位置越靠前越相关
+    - 标题命中重加权（+200）、条款号命中加权（+100）
+    - 超长条款轻微惩罚（避免靠绝对出现次数霸榜）
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     keywords = [k.strip() for k in query.split() if k.strip()]
@@ -12,6 +22,8 @@ def search(query: str, limit: int = 100, event: str = None, doc_type: str = None
         return []
     conds = ["content LIKE ?"] * len(keywords)
     params = ["%" + k + "%" for k in keywords]
+    if season:
+        conds.append("d.season = ?"); params.append(season)
     if event:
         conds.append("d.event = ?"); params.append(event)
     if doc_type:
@@ -25,12 +37,35 @@ def search(query: str, limit: int = 100, event: str = None, doc_type: str = None
     where = " AND ".join(conds)
     sql = (
         "SELECT c.id, c.clause_no, c.title, c.page, c.content, "
-        "d.doc_type, d.version, d.lang, d.event "
+        "d.doc_type, d.version, d.lang, d.event, d.season, d.id AS doc_id "
         "FROM clauses c JOIN documents d ON c.doc_id = d.id "
-        f"WHERE {where} ORDER BY c.id LIMIT ?"
+        f"WHERE {where}"
     )
-    rows = conn.execute(sql, params + [limit]).fetchall()
-    return [dict(r) for r in rows]
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+
+    # 相关性打分 + 排序
+    scored = []
+    for r in rows:
+        content = (r["content"] or "").lower()
+        title = (r["title"] or "").lower()
+        clause_no = (r["clause_no"] or "").lower()
+        s = 0.0
+        for kw in keywords:
+            k = kw.lower()
+            cnt = content.count(k)
+            s += cnt * 10.0                                # 出现频率
+            first = content.find(k)
+            if first >= 0:
+                s += max(0.0, 100.0 - first) * 0.5         # 首次位置靠前加分
+            if k in title:
+                s += 200.0                                  # 标题命中重加权
+            if clause_no and k in clause_no:
+                s += 100.0                                  # 条款号命中加权
+        s -= len(content) / 800.0                           # 超长条款轻微惩罚
+        scored.append((s, r))
+    scored.sort(key=lambda x: (-x[0], x[1]["id"]))
+    return [dict(r) for _, r in scored[:limit]]
 
 
 def highlight(text: str, keywords: list[str]) -> str:

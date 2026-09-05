@@ -23,13 +23,19 @@ def init_db():
         version TEXT,
         lang TEXT,
         filename TEXT,
-        pdf_path TEXT
+        pdf_path TEXT,
+        season TEXT
     )""")
     # 迁移：旧表无 event 列则添加，并回填（历史数据均为 RMUC）
     cols = [r[1] for r in c.execute("PRAGMA table_info(documents)")]
     if "event" not in cols:
         c.execute("ALTER TABLE documents ADD COLUMN event TEXT")
         c.execute("UPDATE documents SET event='RMUC' WHERE event IS NULL")
+    # 迁移：旧表无 season 列则添加，并回填（历史数据均为 2026 赛季）
+    cols = [r[1] for r in c.execute("PRAGMA table_info(documents)")]
+    if "season" not in cols:
+        c.execute("ALTER TABLE documents ADD COLUMN season TEXT")
+        c.execute("UPDATE documents SET season='2026' WHERE season IS NULL")
     c.execute("""CREATE TABLE IF NOT EXISTS clauses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         doc_id INTEGER,
@@ -100,22 +106,22 @@ def extract_clauses(pdf_path: str) -> list[dict]:
     return clauses
 
 
-def ingest_pdf(pdf_path: str, doc_type: str, version: str, lang: str, conn=None, event: str = "RMUC"):
+def ingest_pdf(pdf_path: str, doc_type: str, version: str, lang: str, conn=None, event: str = "RMUC", season: str = "2026"):
     """解析一个 PDF 并入库，返回文档 id 与条款数。"""
     conn = conn or sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    # 去重：同 (event, doc_type, version, lang) 已入库则跳过
+    # 去重：同 (season, event, doc_type, version, lang) 已入库则跳过
     existed = cur.execute(
-        "SELECT id FROM documents WHERE event=? AND doc_type=? AND version=? AND lang=?",
-        (event, doc_type, version, lang),
+        "SELECT id FROM documents WHERE season=? AND event=? AND doc_type=? AND version=? AND lang=?",
+        (season, event, doc_type, version, lang),
     ).fetchone()
     if existed:
         return existed[0], 0
     clauses = extract_clauses(pdf_path)
     filename = os.path.basename(pdf_path)
     cur.execute(
-        "INSERT INTO documents(event, doc_type, version, lang, filename, pdf_path) VALUES(?,?,?,?,?,?)",
-        (event, doc_type, version, lang, filename, pdf_path),
+        "INSERT INTO documents(season, event, doc_type, version, lang, filename, pdf_path) VALUES(?,?,?,?,?,?,?)",
+        (season, event, doc_type, version, lang, filename, pdf_path),
     )
     doc_id = cur.lastrowid
     for cl in clauses:

@@ -12,6 +12,7 @@ import sqlite3
 
 from parser import DB_PATH
 from updater import parse_version
+from clean import clean_text
 
 
 def _norm(text):
@@ -66,12 +67,12 @@ def new_diff_html(old: str, new: str) -> str:
     return "".join(out)
 
 
-def get_versions(event: str, doc_type: str, lang: str = "中文版") -> list[str]:
+def get_versions(event: str, doc_type: str, lang: str = "中文版", season: str = "2026") -> list[str]:
     """某文档类型已入库的所有版本号（按语义版本升序）。"""
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
-        "SELECT DISTINCT version FROM documents WHERE event=? AND doc_type=? AND lang=?",
-        (event, doc_type, lang),
+        "SELECT DISTINCT version FROM documents WHERE season=? AND event=? AND doc_type=? AND lang=?",
+        (season, event, doc_type, lang),
     ).fetchall()
     conn.close()
     versions = [r[0] for r in rows]
@@ -79,10 +80,16 @@ def get_versions(event: str, doc_type: str, lang: str = "中文版") -> list[str
     return versions
 
 
-def _load(conn, event, doc_type, version, lang):
+def get_latest_version(event: str, doc_type: str, lang: str = "中文版", season: str = "2026") -> str | None:
+    """某文档类型在指定赛季的最新版本号（按语义版本取最大）。"""
+    versions = get_versions(event, doc_type, lang, season)
+    return versions[-1] if versions else None
+
+
+def _load(conn, season, event, doc_type, version, lang):
     row = conn.execute(
-        "SELECT id FROM documents WHERE event=? AND doc_type=? AND version=? AND lang=?",
-        (event, doc_type, version, lang),
+        "SELECT id FROM documents WHERE season=? AND event=? AND doc_type=? AND version=? AND lang=?",
+        (season, event, doc_type, version, lang),
     ).fetchone()
     if not row:
         return None, {}
@@ -95,11 +102,16 @@ def _load(conn, event, doc_type, version, lang):
     }
 
 
-def compare(event: str, doc_type: str, from_v: str, to_v: str, lang: str = "中文版") -> dict:
-    """对比两个版本，返回 {from, to, summary, changes}。"""
+def compare(event: str, doc_type: str, from_v: str, to_v: str, lang: str = "中文版", season: str = "2026", from_season: str = None, to_season: str = None) -> dict:
+    """对比两个版本，返回 {from, to, from_season, to_season, summary, changes}。
+
+    默认同赛季（season 生效）；传 from_season / to_season 可跨赛季对比。
+    """
+    from_season = from_season or season
+    to_season = to_season or season
     conn = sqlite3.connect(DB_PATH)
-    from_id, old = _load(conn, event, doc_type, from_v, lang)
-    to_id, new = _load(conn, event, doc_type, to_v, lang)
+    from_id, old = _load(conn, from_season, event, doc_type, from_v, lang)
+    to_id, new = _load(conn, to_season, event, doc_type, to_v, lang)
     conn.close()
     if from_id is None:
         raise ValueError(f"版本不存在: {from_v}")
@@ -113,28 +125,37 @@ def compare(event: str, doc_type: str, from_v: str, to_v: str, lang: str = "中�
         o, n = old.get(no), new.get(no)
         if o is None:
             added += 1
-            changes.append({"clause_no": no, "title": n["title"], "type": "added", "new": n["content"]})
+            changes.append({"clause_no": no, "title": n["title"], "type": "added", "new": clean_text(n["content"]), "new_page": n["page"]})
         elif n is None:
             removed += 1
-            changes.append({"clause_no": no, "title": o["title"], "type": "removed", "old": o["content"]})
-        elif _norm(o["content"]) == _norm(n["content"]):
-            unchanged += 1
+            changes.append({"clause_no": no, "title": o["title"], "type": "removed", "old": clean_text(o["content"]), "old_page": o["page"]})
         else:
-            modified += 1
-            changes.append({
-                "clause_no": no,
-                "title": n["title"] or o["title"],
-                "type": "modified",
-                "old": o["content"],
-                "new": n["content"],
-                "diff_html": inline_diff(o["content"], n["content"]),
-                "old_html": old_diff_html(o["content"], n["content"]),
-                "new_html": new_diff_html(o["content"], n["content"]),
-            })
+            o_c = clean_text(o["content"])
+            n_c = clean_text(n["content"])
+            if _norm(o_c) == _norm(n_c):
+                unchanged += 1
+            else:
+                modified += 1
+                changes.append({
+                    "clause_no": no,
+                    "title": n["title"] or o["title"],
+                    "type": "modified",
+                    "old": o_c,
+                    "new": n_c,
+                    "diff_html": inline_diff(o_c, n_c),
+                    "old_html": old_diff_html(o_c, n_c),
+                    "new_html": new_diff_html(o_c, n_c),
+                    "old_page": o["page"],
+                    "new_page": n["page"],
+                })
 
     return {
         "from": from_v,
         "to": to_v,
+        "from_season": from_season,
+        "to_season": to_season,
+        "from_doc_id": from_id,
+        "to_doc_id": to_id,
         "summary": {"added": added, "removed": removed, "modified": modified, "unchanged": unchanged},
         "changes": changes,
     }

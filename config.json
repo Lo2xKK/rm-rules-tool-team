@@ -1,0 +1,11 @@
+{
+  "wiki_urls": {
+    "RMUC": "https://bbs.robomaster.com/wiki/20204847/809871",
+    "RMUL": "https://bbs.robomaster.com/wiki/20204847/809872"
+  },
+  "announcement_urls": {
+    "2025": "https://www.robomaster.com/zh-CN/resource/pages/announcement/1768",
+    "2024": "https://www.robomaster.com/zh-CN/resource/pages/announcement/1653"
+  },
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+}
