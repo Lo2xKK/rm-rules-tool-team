@@ -371,7 +371,13 @@ def api_pdf(doc_id: int):
     conn.close()
     if not row or not row[0] or not os.path.exists(row[0]):
         return HTMLResponse("PDF 文件不存在", status_code=404)
-    return FileResponse(row[0], media_type="application/pdf")
+    # 加缓存头：PDF 文件名含版本号，更新是新增文件而非覆盖，缓存 7 天安全，
+    # 队友二次打开同一 PDF 直接命中浏览器缓存、秒开。
+    return FileResponse(
+        row[0],
+        media_type="application/pdf",
+        headers={"Cache-Control": "public, max-age=604800"},
+    )
 
 
 def _get_lan_ip() -> str:

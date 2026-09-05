@@ -777,8 +777,17 @@ function openPdfPair(fromDoc, fromPage, toDoc, toPage, title, fromLabel, toLabel
 
 function loadPdfSide(side, docId, page) {
   const token = ++pdfState[side].token;
-  document.getElementById('pdfPageInfo' + side).textContent = '加载中…';
-  pdfjsLib.getDocument('/api/pdf/' + docId).promise.then(function(doc) {
+  const info = document.getElementById('pdfPageInfo' + side);
+  info.textContent = '加载中…';
+  const task = pdfjsLib.getDocument('/api/pdf/' + docId);
+  task.onProgress = function(evt) {
+    if (pdfState[side].token !== token) return;
+    if (evt.total > 0) {
+      const pct = Math.min(99, Math.round(evt.loaded / evt.total * 100));
+      info.textContent = '加载中 ' + pct + '%';
+    }
+  };
+  task.promise.then(function(doc) {
     if (pdfState[side].token !== token) return;
     pdfState[side].doc = doc;
     pdfState[side].cur = Math.min(Math.max(page || 1, 1), doc.numPages);
